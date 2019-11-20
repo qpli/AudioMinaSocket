@@ -4,6 +4,8 @@ import android.util.Log;
 
 import com.example.record.FileUtils;
 
+import org.apache.mina.core.filterchain.IoFilter;
+import org.apache.mina.core.future.ConnectFuture;
 import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IoSession;
 import org.json.JSONObject;
@@ -44,6 +46,28 @@ public class MinaClientHandler extends IoHandlerAdapter {
       //  session.write("this is client");
 
         super.sessionOpened(session);
+    }
+
+    @Override
+    public void sessionClosed(IoSession session) throws Exception {
+        super.sessionClosed(session);
+        for(;;){
+            try{
+                System.out.println("尝试重连");
+                Thread.sleep(3000);
+                ConnectFuture future = MinaThread.connector.connect();
+                future.awaitUninterruptibly();// 等待连接创建成功
+                session = future.getSession();// 获取会话
+                if(session.isConnected()){
+                    // logger.info("断线重连["+ connector.getDefaultRemoteAddress().getHostName() +":"+ connector.getDefaultRemoteAddress().getPort()+"]成功");
+                    System.out.println("断线重连["+ MinaThread.connector.getDefaultRemoteAddress().toString() +":"+ MinaThread.connector.getDefaultRemoteAddress().toString()+"]成功");
+                    break;
+                }
+            }catch(Exception ex){
+                //logger.info("重连服务器登录失败,3秒再连接一次:" + ex.getMessage());
+                System.out.println("重连服务器登录失败,3秒再连接一次:" + ex.getMessage());
+            }
+        }
     }
 
     @Override

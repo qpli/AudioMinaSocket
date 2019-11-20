@@ -4,6 +4,8 @@ import android.util.Base64;
 
 import com.example.record.FileUtils;
 
+import org.apache.mina.core.filterchain.IoFilter;
+import org.apache.mina.core.filterchain.IoFilterAdapter;
 import org.apache.mina.core.future.ConnectFuture;
 import org.apache.mina.core.service.IoAcceptor;
 import org.apache.mina.core.service.IoConnector;
@@ -32,6 +34,7 @@ import static org.apache.mina.filter.codec.textline.LineDelimiter.WINDOWS;
 public class MinaThread extends Thread {
 //    private IoSession session = null;
 //    public String filename ;
+static IoConnector connector=new NioSocketConnector();
     public MinaThread( ){
 
     }
@@ -55,20 +58,10 @@ public class MinaThread extends Thread {
     @Override
     public void run() {
         // Create TCP/IP connector.
-        IoConnector connector=new NioSocketConnector();
-        //编写过滤器，设置编码
-//        connector.getFilterChain().addLast("codec",
-//                new ProtocolCodecFilter(
-//                        new TextLineCodecFactory(
-//                                Charset.forName("GBK"),
-//                                WINDOWS.getValue(),
-//                                WINDOWS.getValue()
-//                        )
-//                )
-//        );
+        MinaThread.connector=new NioSocketConnector();
+//        IoSession session;
         TextLineCodecFactory lineCodec=new TextLineCodecFactory(Charset.forName("ISO_8859_1"));
         //最大传输为1M
-
         lineCodec.setDecoderMaxLineLength(1024*1024);
         lineCodec.setEncoderMaxLineLength(1024*1024);
         connector.getFilterChain().addLast( "logger", new LoggingFilter() );
@@ -83,6 +76,28 @@ public class MinaThread extends Thread {
         ConnectFuture connectFuture = connector.connect(new InetSocketAddress(ConstantUtil.IP_ADDRESS, ConstantUtil.PORT));
 
         connectFuture.awaitUninterruptibly(); // 连接完了，等着吧
+//        //		断线重连回调拦截器
+//        connector.getFilterChain().addFirst("reconnection", new IoFilterAdapter() {
+//            @Override
+//            public void sessionClosed(NextFilter nextFilter, IoSession ioSession) throws Exception {
+//                for(;;){
+//                    try{
+//                        Thread.sleep(3000);
+//                        ConnectFuture future = connector.connect();
+//                        future.awaitUninterruptibly();// 等待连接创建成功
+//                        IoSession session = future.getSession();// 获取会话
+//                        if(session.isConnected()){
+//                           // logger.info("断线重连["+ connector.getDefaultRemoteAddress().getHostName() +":"+ connector.getDefaultRemoteAddress().getPort()+"]成功");
+//                           System.out.println("断线重连["+ connector.getDefaultRemoteAddress().toString() +":"+ connector.getDefaultRemoteAddress().toString()+"]成功");
+//                            break;
+//                        }
+//                    }catch(Exception ex){
+//                        //logger.info("重连服务器登录失败,3秒再连接一次:" + ex.getMessage());
+//                        System.out.println("重连服务器登录失败,3秒再连接一次:" + ex.getMessage());
+//                    }
+//                }
+//            }
+//        });
         System.err.println("Mina客户端启动完成。。。");
         try {
             Thread.sleep(1000);
@@ -113,7 +128,6 @@ public class MinaThread extends Thread {
             }catch (InterruptedException | IOException | JSONException e){
                 e.printStackTrace();
             }
-
         }
         // 关闭连接
 //        connector.dispose();
